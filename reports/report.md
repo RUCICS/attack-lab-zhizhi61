@@ -37,7 +37,7 @@ with open('ans1.txt', 'wb') as f:
 
 ### Problem 2:
 - **分析**：
-  题目开启了 NX 保护，无法执行栈上代码，需要使用 ROP (Return Oriented Programming)。
+  题目开启了 NX 保护，无法执行栈上代码，需要使用 ROP。
   `func` 函数使用 `memcpy` 复制 0x38 (56) 字节到 `rbp-0x8`。
   偏移量同样为 16 字节到达 return address。
   利用空间为 56 - 16 = 40 字节。
@@ -45,7 +45,7 @@ with open('ans1.txt', 'wb') as f:
   我们需要找到 `pop rdi; ret` gadget。
   在 `pop_rdi` 函数 (`0x4012bb`) 的结尾处找到了 `5f c3` (pop rdi; ret)，地址为 `0x4012c7`。
   Payload 结构：`padding + pop_rdi_gadget + 0x3f8 + func2_addr`。
-  为了解决栈对齐问题 (System V AMD64 ABI 要求 call 指令时栈 16 字节对齐)，在 chain 中加入了一个 `ret` gadget (`0x40101a`)。
+  为了解决栈对齐问题，在 chain 中加入了一个 `ret` gadget (`0x40101a`)。
 
 - **解决方案**：
 ```python
@@ -80,7 +80,6 @@ with open('ans2.txt', 'wb') as f:
 
 ### Problem 3: 
 - **分析**：
-  该题目没有开启 NX 保护（栈可执行）。
   `func` 函数中将当前的 `%rsp` 保存到了全局变量 `saved_rsp` (`0x403510`)。
   `jmp_xs` 函数 (`0x401334`) 实现跳转到 `saved_rsp + 0x10` 的位置。
   经计算，`saved_rsp + 0x10` 恰好是 `func` 函数中 buffer 的起始地址 (`rbp-0x20`)。
@@ -149,17 +148,20 @@ with open('ans3.txt', 'wb') as f:
   
   输入 `-1` 会导致长时间循环（约数十亿次指令），需等待几秒钟。
 
+  **注意**：`main` 函数中使用 `scanf("%d", &money)` 读取输入。如果输入的不是数字（例如误输了字符），`scanf` 会读取失败且不消耗缓冲区字符，导致 `main` 函数进入死循环不断打印提示信息。
+
 - **解决方案**：
-  输入如下序列：
+  前两个问题可以回答任意非空字符串，第三个问题必须输入 `-1`。
+  例如：
   ```
-  a
-  a
+  zhizhi61
+  yeah...
   -1
   ```
   保存为 `ans4.txt`。
 
 - **结果**：
-  运行 `./problem4 < ans4.txt` 输出（需等待几秒）：
+  运行 `./problem4 < ans4.txt` 输出：
   ```
   hi please tell me what is your name?
   hi! do you like ics?
@@ -175,7 +177,3 @@ Problem 2 展示了在 NX 开启情况下利用 ROP 绕过保护，同时也注�
 Problem 3 结合了代码注入和特定 gadget 跳转到栈上执行 shellcode，利用了程序自身的逻辑漏洞（保存 rsp）。
 Problem 4 展示了 Canary 保护机制，以及通过逻辑漏洞而非内存破坏来达成攻击目的的可能性。
 
-## 参考资料
-1. CSAPP 3e, Chapter 3.
-2. ROPgadget tutorial.
-3. CTF-Wiki Stack Overflow.
